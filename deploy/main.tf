@@ -4,13 +4,17 @@ terraform {
       source  = "hashicorp/google"
       version = "4.29.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "2.2.0"
+    }
   }
 }
 
 provider "google" {
   # Configuration options
-  project     = "optical-unison-356814"
-  credentials = "../credentials/optical-unison-356814-b09dbfb16473.json"
+  project     = var.project_id
+  credentials = var.service_account_key_json_path
 }
 
 resource "google_pubsub_topic" "example" {
