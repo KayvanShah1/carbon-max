@@ -1,15 +1,17 @@
 # Creates a GCS Bucket to store messages
 resource "google_storage_bucket" "bucket" {
   provider                    = google
-  name                        = "test-bucket"
+  name                        = "${var.project_id}-test-bucket"
   location                    = var.region
   uniform_bucket_level_access = true
+  force_destroy               = true
 }
 
 # Create a GCS bucket to store Cloud Functions
 resource "google_storage_bucket" "cloud_functions_bucket" {
-  name     = "${var.project_id}-cloud_functions"
-  location = var.region
+  name          = "${var.project_id}-cloud_functions"
+  location      = var.region
+  force_destroy = true
 }
 
 # Add source code zip to the Cloud Function's bucket
@@ -55,6 +57,7 @@ resource "google_pubsub_subscription" "test_subscription" {
 resource "google_cloudfunctions_function" "test_function" {
   name        = "test-function"
   description = "Pulls the messages from Google Pub/Sub subscription"
+  region      = var.region
 
   labels = {
     my-label = "testing"
@@ -67,14 +70,12 @@ resource "google_cloudfunctions_function" "test_function" {
   source_archive_object = google_storage_bucket_object.zip.name
 
   event_trigger {
-    event_type = "google.cloud.pubsub.topic.v1.messagePublished"
+    event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.test_topic.name
     failure_policy {
       retry = true
     }
   }
-
-
 }
 
 # Create a Gen2 Cloud Function
