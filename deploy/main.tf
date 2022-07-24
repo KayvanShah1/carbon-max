@@ -1,24 +1,35 @@
-terraform {
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "4.29.0"
-    }
-    archive = {
-      source  = "hashicorp/archive"
-      version = "2.2.0"
-    }
-  }
+# Creates a GCS Bucket to store messages
+resource "google_storage_bucket" "bucket" {
+  provider                    = google
+  name                        = "test-bucket"
+  location                    = var.region
+  uniform_bucket_level_access = true
 }
 
-provider "google" {
-  # Configuration options
-  project     = var.project_id
-  credentials = var.service_account_key_json_path
+# Create a GCS bucket to store Cloud Functions
+resource "google_storage_bucket" "cloud_functions_bucket" {
+  name     = "${var.project_id}-cloud_functions"
+  location = var.region
 }
 
-resource "google_pubsub_topic" "example" {
-  name = "example-topic"
+# Add source code zip to the Cloud Function's bucket
+resource "google_storage_bucket_object" "zip" {
+  source       = data.archive_file.source.output_path
+  content_type = "application/zip"
+
+  name   = "src-${data.archive_file.source.output_md5}.zip"
+  bucket = google_storage_bucket.cloud_functions_bucket.name
+
+  depends_on = [
+    google_storage_bucket.function_bucket,
+    data.archive_file.source
+  ]
+}
+
+# Create a Pub/Sub Topic
+resource "google_pubsub_topic" "test_topic" {
+  name    = "test-topic"
+  project = var.project_id
 
   labels = {
     foo = "bar"
@@ -27,21 +38,48 @@ resource "google_pubsub_topic" "example" {
   message_retention_duration = "86600s"
 }
 
-resource "google_pubsub_subscription" "example" {
-  name  = "example-subscription"
-  topic = google_pubsub_topic.example.name
+# Create a Subscription to Pub/Sub Topic with pull delivery
+resource "google_pubsub_subscription" "test_subscription" {
+  name  = "test-subscription"
+  topic = google_pubsub_topic.test_topic.name
 
-  ack_deadline_seconds = 20
+  ack_deadline_seconds    = 20
+  enable_message_ordering = false
 
   labels = {
     foo = "bar"
   }
+}
 
-  push_config {
-    push_endpoint = "https://example.com/push"
+# Create a Gen2 Cloud Function
+resource "google_cloudfunctions2_function" "test_function" {
+  provider    = google-beta
+  name        = "test-function"
+  location    = var.region
+  description = "Pulls the messages from Google Pub/Sub subscription"
 
-    attributes = {
-      x-goog-version = "v1"
+  build_config {
+    runtime     = "python38"
+    entry_point = "test_function" # Set the entry point 
+    source {
+      storage_source {
+        bucket = google_storage_bucket.bucket.name
+        object = google_storage_bucket_object.zip.name
+      }
     }
+  }
+
+  service_config {
+    max_instance_count = 3
+    min_instance_count = 1
+    available_memory   = "256M"
+    timeout_seconds    = 60
+  }
+
+  event_trigger {
+    trigger_region = var.low_carbon_region
+    event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic   = google_pubsub_topic.test_topic.id
+    retry_policy   = "RETRY_POLICY_RETRY"
   }
 }
