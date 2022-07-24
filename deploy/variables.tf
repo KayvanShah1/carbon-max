@@ -13,3 +13,7 @@ variable "low_carbon_region" {
 variable "service_account_key_json_path" {
   default = "../credentials/optical-unison-356814-b09dbfb16473.json"
 }
+
+variable "source_code" {
+  default = "../src"
+}

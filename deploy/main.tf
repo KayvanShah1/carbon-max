@@ -21,7 +21,7 @@ resource "google_storage_bucket_object" "zip" {
   bucket = google_storage_bucket.cloud_functions_bucket.name
 
   depends_on = [
-    google_storage_bucket.function_bucket,
+    google_storage_bucket.cloud_functions_bucket,
     data.archive_file.source
   ]
 }
@@ -51,35 +51,60 @@ resource "google_pubsub_subscription" "test_subscription" {
   }
 }
 
-# Create a Gen2 Cloud Function
-resource "google_cloudfunctions2_function" "test_function" {
-  provider    = google-beta
+# Create a Gen1 Cloud Function
+resource "google_cloudfunctions_function" "test_function" {
   name        = "test-function"
-  location    = var.region
   description = "Pulls the messages from Google Pub/Sub subscription"
 
-  build_config {
-    runtime     = "python38"
-    entry_point = "test_function" # Set the entry point 
-    source {
-      storage_source {
-        bucket = google_storage_bucket.bucket.name
-        object = google_storage_bucket_object.zip.name
-      }
+  labels = {
+    my-label = "testing"
+  }
+
+  runtime     = "python38"
+  entry_point = "test_function" # Set the entry point 
+
+  source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
+  source_archive_object = google_storage_bucket_object.zip.name
+
+  event_trigger {
+    event_type = "google.cloud.pubsub.topic.v1.messagePublished"
+    resource   = google_pubsub_topic.test_topic.name
+    failure_policy {
+      retry = true
     }
   }
 
-  service_config {
-    max_instance_count = 3
-    min_instance_count = 1
-    available_memory   = "256M"
-    timeout_seconds    = 60
-  }
 
-  event_trigger {
-    trigger_region = var.low_carbon_region
-    event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic   = google_pubsub_topic.test_topic.id
-    retry_policy   = "RETRY_POLICY_RETRY"
-  }
 }
+
+# Create a Gen2 Cloud Function
+# resource "google_cloudfunctions2_function" "test_function" {
+#   name        = "test-function"
+#   location    = var.region
+#   description = "Pulls the messages from Google Pub/Sub subscription"
+
+#   build_config {
+#     runtime     = "python38"
+#     entry_point = "test_function" # Set the entry point 
+#     source {
+#       storage_source {
+#         bucket = google_storage_bucket.cloud_functions_bucket.name
+#         object = google_storage_bucket_object.zip.name
+#       }
+#     }
+#   }
+
+#   service_config {
+#     max_instance_count = 3
+#     min_instance_count = 1
+#     available_memory   = "256M"
+#     timeout_seconds    = 60
+#   }
+
+#   event_trigger {
+#     trigger_region = var.low_carbon_region
+#     event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
+#     pubsub_topic   = google_pubsub_topic.test_topic.name
+#     retry_policy   = "RETRY_POLICY_RETRY"
+#   }
+# }

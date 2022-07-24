@@ -5,6 +5,7 @@ terraform {
       version = "4.29.0"
     }
     google-beta = {
+      source  = "hashicorp/google-beta"
       version = "~> 3.83.0"
     }
     archive = {
