@@ -3,7 +3,11 @@ variable "project_id" {
 }
 
 variable "region" {
-  default = "europe-west1"
+  default = "asia-south1"
+}
+
+variable "low_carbon_region" {
+  default = "us-central1"
 }
 
 variable "service_account_key_json_path" {
