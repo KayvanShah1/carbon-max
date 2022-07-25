@@ -1,4 +1,9 @@
 terraform {
+  backend "gcs" {
+    bucket      = "terraform-state-manager"
+    prefix      = "terraform/state"
+    credentials = "../credentials/optical-unison-356814-b09dbfb16473.json"
+  }
   required_providers {
     google = {
       source  = "hashicorp/google"
