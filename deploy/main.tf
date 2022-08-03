@@ -1,16 +1,16 @@
 # Creates a GCS Bucket to store messages
 resource "google_storage_bucket" "bucket" {
   provider                    = google
-  name                        = "${var.project_id}-test-bucket"
-  location                    = var.region
+  name                        = "${var.gcp_project_id}-test-bucket"
+  location                    = var.gcp_region
   uniform_bucket_level_access = true
   force_destroy               = true
 }
 
 # Create a GCS bucket to store Cloud Functions
 resource "google_storage_bucket" "cloud_functions_bucket" {
-  name          = "${var.project_id}-cloud_functions"
-  location      = var.region
+  name          = "${var.gcp_project_id}-cloud_functions"
+  location      = var.gcp_region
   force_destroy = true
 }
 
@@ -31,7 +31,7 @@ resource "google_storage_bucket_object" "zip" {
 # Create a Pub/Sub Topic
 resource "google_pubsub_topic" "test_topic" {
   name    = "test-topic"
-  project = var.project_id
+  project = var.gcp_project_id
 
   labels = {
     foo = "bar"
@@ -57,7 +57,7 @@ resource "google_pubsub_subscription" "test_subscription" {
 resource "google_cloudfunctions_function" "test_function" {
   name        = "test-function"
   description = "Pulls the messages from Google Pub/Sub subscription"
-  region      = var.region
+  region      = var.gcp_region
 
   labels = {
     my-label = "testing"
@@ -81,7 +81,7 @@ resource "google_cloudfunctions_function" "test_function" {
 # Create a Gen2 Cloud Function
 # resource "google_cloudfunctions2_function" "test_function" {
 #   name        = "test-function"
-#   location    = var.region
+#   location    = var.gcp_region
 #   description = "Pulls the messages from Google Pub/Sub subscription"
 
 #   build_config {
@@ -103,9 +103,110 @@ resource "google_cloudfunctions_function" "test_function" {
 #   }
 
 #   event_trigger {
-#     trigger_region = var.low_carbon_region
+#     trigger_region = var.gcp_low_carbon_region
 #     event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
 #     pubsub_topic   = google_pubsub_topic.test_topic.name
 #     retry_policy   = "RETRY_POLICY_RETRY"
 #   }
+# }
+
+resource "aws_s3_bucket" "test_bucket" {
+  bucket = "${var.gcp_project_id}-tf-test-bucket"
+}
+
+resource "aws_s3_bucket" "test_bucket_lambda_functions" {
+  bucket = "${var.gcp_project_id}-tf-test-bucket-lambda-functions"
+}
+
+resource "aws_s3_object" "test_object_zip" {
+  bucket = aws_s3_bucket.test_bucket_lambda_functions.bucket
+  key    = "src-${var.gcp_project_id}-tf-test-lambda-function.zip"
+  source = data.archive_file.lambda_function_source.output_path
+
+  # etag = filemd5(data.archive_file.lambda_function_source.output_path)
+}
+
+resource "aws_sns_topic" "user_updates" {
+  name = "user-updates-topic"
+  delivery_policy = jsonencode({
+    "http" : {
+      "defaultHealthyRetryPolicy" : {
+        "minDelayTarget" : 20,
+        "maxDelayTarget" : 20,
+        "numRetries" : 3,
+        "numMaxDelayRetries" : 0,
+        "numNoDelayRetries" : 0,
+        "numMinDelayRetries" : 0,
+        "backoffFunction" : "linear"
+      },
+      "disableSubscriptionOverrides" : false,
+      "defaultThrottlePolicy" : {
+        "maxReceivesPerSecond" : 1
+      }
+    }
+  })
+}
+
+resource "aws_sqs_queue" "user_updates_queue" {
+  name                      = "user-updates-queue"
+  delay_seconds             = 90
+  max_message_size          = 2048
+  message_retention_seconds = 86400
+  receive_wait_time_seconds = 10
+  # redrive_policy = jsonencode({
+  #   deadLetterTargetArn = aws_sqs_queue.terraform_queue_deadletter.arn
+  #   maxReceiveCount     = 4
+  # })
+  policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Id" : "sqspolicy",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Principal" : "*",
+        "Action" : ["sqs:*", "lambda:*"],
+      }
+    ]
+  })
+}
+
+resource "aws_sns_topic_subscription" "user_updates_sqs_target" {
+  topic_arn = aws_sns_topic.user_updates.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.user_updates_queue.arn
+}
+
+resource "aws_iam_role" "iam_for_lambda" {
+  name = "iam_for_lambda"
+
+  assume_role_policy = jsonencode(
+    {
+      "Version" : "2012-10-17",
+      "Statement" : [
+        {
+          "Action" : ["sqs:*", "lambda:*"],
+          "Principal" : {
+            "Service" : "lambda.amazonaws.com"
+          },
+          "Effect" : "Allow",
+          "Sid" : ""
+        }
+      ]
+  })
+}
+
+resource "aws_lambda_function" "test_lambda" {
+  function_name = "${var.gcp_project_id}-tf-lambda-function-test"
+  role          = aws_iam_role.iam_for_lambda.arn
+  handler       = "main.lambda_handler"
+
+  s3_bucket = aws_s3_bucket.test_bucket_lambda_functions.bucket
+  s3_key    = aws_s3_object.test_object_zip.key
+
+  runtime = "python3.9"
+}
+
+# resource "aws_lambda_event_source_mapping" "example" {
+#   event_source_arn = aws_sqs_queue.user_updates_queue.arn
+#   function_name    = aws_lambda_function.test_lambda.arn
 # }

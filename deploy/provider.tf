@@ -1,7 +1,7 @@
 terraform {
   backend "gcs" {
     bucket      = "terraform-state-manager"
-    prefix      = "terraform/state"
+    prefix      = "dummy_project"
     credentials = "../credentials/optical-unison-356814-b09dbfb16473.json"
   }
   required_providers {
@@ -17,16 +17,24 @@ terraform {
       source  = "hashicorp/archive"
       version = "2.2.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.24.0"
+    }
   }
+}
+
+provider "aws" {
+  region = var.aws_region
 }
 
 provider "google" {
   # Configuration options
-  project     = var.project_id
-  credentials = var.service_account_key_json_path
+  project     = var.gcp_project_id
+  credentials = var.gcp_service_account_key_json_path
 }
 
 provider "google-beta" {
-  project     = var.project_id
-  credentials = var.service_account_key_json_path
+  project     = var.gcp_project_id
+  credentials = var.gcp_service_account_key_json_path
 }

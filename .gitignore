@@ -136,3 +136,4 @@ credentials/
 # Terraform
 .terraform*
 *.tfstate*
+*.tfvars
