@@ -184,7 +184,7 @@ resource "aws_iam_role" "iam_for_lambda" {
       "Version" : "2012-10-17",
       "Statement" : [
         {
-          "Action" : ["sqs:*", "lambda:*"],
+          "Action" : ["sts:AssumeRole"],
           "Principal" : {
             "Service" : "lambda.amazonaws.com"
           },
@@ -193,6 +193,31 @@ resource "aws_iam_role" "iam_for_lambda" {
         }
       ]
   })
+}
+
+resource "aws_iam_policy" "lambda_sqs_policy" {
+  name        = "lambda_sqs_policy"
+  path        = "/"
+  description = "IAM policy for SQS Message Recipients from a lambda"
+
+  policy = jsonencode(
+    {
+      "Version" : "2012-10-17",
+      "Statement" : [
+        {
+          "Action" : [
+            "sqs:*", "lambda:*"
+          ],
+          "Resource" : "*",
+          "Effect" : "Allow"
+        }
+      ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_logs" {
+  role       = aws_iam_role.iam_for_lambda.name
+  policy_arn = aws_iam_policy.lambda_sqs_policy.arn
 }
 
 resource "aws_lambda_function" "test_lambda" {
@@ -206,7 +231,7 @@ resource "aws_lambda_function" "test_lambda" {
   runtime = "python3.9"
 }
 
-# resource "aws_lambda_event_source_mapping" "example" {
-#   event_source_arn = aws_sqs_queue.user_updates_queue.arn
-#   function_name    = aws_lambda_function.test_lambda.arn
-# }
+resource "aws_lambda_event_source_mapping" "example" {
+  event_source_arn = aws_sqs_queue.user_updates_queue.arn
+  function_name    = aws_lambda_function.test_lambda.arn
+}
