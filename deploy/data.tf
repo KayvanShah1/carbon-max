@@ -1,7 +1,7 @@
 data "archive_file" "source" {
   type        = "zip"
   source_dir  = var.source_code
-  output_path = "${path.root}/tmp/function.zip"
+  output_path = "${path.root}/tmp/gcp_cloud_function.zip"
 }
 
 data "archive_file" "lambda_function_source" {

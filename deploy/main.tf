@@ -110,14 +110,17 @@ resource "google_cloudfunctions_function" "test_function" {
 #   }
 # }
 
+# Create a S3 Bucket to store the messages
 resource "aws_s3_bucket" "test_bucket" {
   bucket = "${var.gcp_project_id}-tf-test-bucket"
 }
 
+# Create a S3 Bucket to store the lambda functions source code zip files
 resource "aws_s3_bucket" "test_bucket_lambda_functions" {
   bucket = "${var.gcp_project_id}-tf-test-bucket-lambda-functions"
 }
 
+# Storing lambda functions source code zip files in a S3 bucket
 resource "aws_s3_object" "test_object_zip" {
   bucket = aws_s3_bucket.test_bucket_lambda_functions.bucket
   key    = "src-${var.gcp_project_id}-tf-test-lambda-function.zip"
@@ -126,6 +129,7 @@ resource "aws_s3_object" "test_object_zip" {
   # etag = filemd5(data.archive_file.lambda_function_source.output_path)
 }
 
+# Create SNS Topic
 resource "aws_sns_topic" "user_updates" {
   name = "user-updates-topic"
   delivery_policy = jsonencode({
@@ -147,6 +151,7 @@ resource "aws_sns_topic" "user_updates" {
   })
 }
 
+# Create SQS Queue for messages
 resource "aws_sqs_queue" "user_updates_queue" {
   name                      = "user-updates-queue"
   delay_seconds             = 90
@@ -170,12 +175,14 @@ resource "aws_sqs_queue" "user_updates_queue" {
   })
 }
 
+# Create a subscription to SNS Topic and attach it to the SQS Queue
 resource "aws_sns_topic_subscription" "user_updates_sqs_target" {
   topic_arn = aws_sns_topic.user_updates.arn
   protocol  = "sqs"
   endpoint  = aws_sqs_queue.user_updates_queue.arn
 }
 
+# Create an IAM role to use lambda function as a service 
 resource "aws_iam_role" "iam_for_lambda" {
   name = "iam_for_lambda"
 
@@ -195,6 +202,7 @@ resource "aws_iam_role" "iam_for_lambda" {
   })
 }
 
+# Create an IAM Policy with permissions to use lambda and SQS
 resource "aws_iam_policy" "lambda_sqs_policy" {
   name        = "lambda_sqs_policy"
   path        = "/"
@@ -215,11 +223,13 @@ resource "aws_iam_policy" "lambda_sqs_policy" {
   })
 }
 
+# Attach the IAM Policy to the IAM Role
 resource "aws_iam_role_policy_attachment" "lambda_logs" {
   role       = aws_iam_role.iam_for_lambda.name
   policy_arn = aws_iam_policy.lambda_sqs_policy.arn
 }
 
+# Create a lambda function from the source archive object from S3 bucket
 resource "aws_lambda_function" "test_lambda" {
   function_name = "${var.gcp_project_id}-tf-lambda-function-test"
   role          = aws_iam_role.iam_for_lambda.arn
@@ -231,6 +241,7 @@ resource "aws_lambda_function" "test_lambda" {
   runtime = "python3.9"
 }
 
+# Add event source mapping to
 resource "aws_lambda_event_source_mapping" "example" {
   event_source_arn = aws_sqs_queue.user_updates_queue.arn
   function_name    = aws_lambda_function.test_lambda.arn
