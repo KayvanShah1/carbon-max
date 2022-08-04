@@ -78,6 +78,31 @@ resource "google_cloudfunctions_function" "test_function" {
   }
 }
 
+# Create a Gen1 Cloud Function
+resource "google_cloudfunctions_function" "pubsub2sns" {
+  name        = "test-function-pubsub-to-sns"
+  description = "Push messages to Google Pub/Sub to AWS SNS"
+  region      = var.gcp_region
+
+  labels = {
+    my-label = "testing"
+  }
+
+  runtime     = "python38"
+  entry_point = "pubsub_to_sns" # Set the entry point 
+
+  source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
+  source_archive_object = google_storage_bucket_object.zip.name
+
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.test_topic.name
+    failure_policy {
+      retry = true
+    }
+  }
+}
+
 # Create a Gen2 Cloud Function
 # resource "google_cloudfunctions2_function" "test_function" {
 #   name        = "test-function"

@@ -11,7 +11,6 @@ variable "gcp_low_carbon_region" {
 }
 
 variable "gcp_service_account_key_json_path" {
-  default = "../credentials/optical-unison-356814-b09dbfb16473.json"
 }
 
 variable "source_code" {
@@ -24,4 +23,10 @@ variable "lambda_func_source_code" {
 
 variable "aws_region" {
   default = "us-east-1"
+}
+
+variable "aws_access_key_id" {
+}
+
+variable "aws_secret_access_key" {
 }
