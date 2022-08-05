@@ -55,3 +55,23 @@ resource "google_secret_manager_secret_version" "aws_account_number" {
 
   secret_data = var.aws_account_number
 }
+
+# AWS Account Region
+resource "google_secret_manager_secret" "aws_account_region" {
+  secret_id = "aws_account_region"
+
+  labels = {
+    label = "aws-account-secret"
+  }
+
+  replication {
+    automatic = true
+  }
+}
+
+
+resource "google_secret_manager_secret_version" "aws_account_region" {
+  secret = google_secret_manager_secret.aws_account_region.id
+
+  secret_data = var.aws_region
+}

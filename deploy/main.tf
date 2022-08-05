@@ -63,7 +63,7 @@ resource "google_cloudfunctions_function" "test_function" {
     my-label = "testing"
   }
 
-  runtime     = "python38"
+  runtime     = "python39"
   entry_point = "test_function" # Set the entry point 
 
   source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
@@ -88,7 +88,7 @@ resource "google_cloudfunctions_function" "pubsub2sns" {
     my-label = "testing"
   }
 
-  runtime     = "python38"
+  runtime     = "python39"
   entry_point = "pubsub_to_sns" # Set the entry point 
 
   source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
@@ -110,7 +110,7 @@ resource "google_cloudfunctions_function" "pubsub2sns" {
 #   description = "Pulls the messages from Google Pub/Sub subscription"
 
 #   build_config {
-#     runtime     = "python38"
+#     runtime     = "python39"
 #     entry_point = "test_function" # Set the entry point 
 #     source {
 #       storage_source {
