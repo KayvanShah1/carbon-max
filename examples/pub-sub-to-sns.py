@@ -1,7 +1,5 @@
 import base64
-import functions_framework
 import json
-
 import boto3
 
 from google.cloud import secretmanager
@@ -23,9 +21,29 @@ def get_message_from_subscription(cloud_event):
     return message
 
 
-@functions_framework.cloud_event
-def pubsub_to_sns(cloud_event):
-    message = get_message_from_subscription(cloud_event)
+if __name__ == "__main__":
+    message = {
+        "glossary": {
+            "title": "example glossary",
+            "GlossDiv": {
+                "title": "S",
+                "GlossList": {
+                    "GlossEntry": {
+                        "ID": "SGML",
+                        "SortAs": "SGML",
+                        "GlossTerm": "Standard Generalized Markup Language",
+                        "Acronym": "SGML",
+                        "Abbrev": "ISO 8879:1986",
+                        "GlossDef": {
+                            "para": "A meta-markup language, used to create markup languages such as DocBook.",
+                            "GlossSeeAlso": ["GML", "XML"],
+                        },
+                        "GlossSee": "markup",
+                    }
+                },
+            },
+        }
+    }
 
     print("Connecting to GCP Secret Manager Service Client ...")
     client = secretmanager.SecretManagerServiceClient()

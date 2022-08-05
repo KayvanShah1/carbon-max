@@ -18,7 +18,12 @@ def connect_to_buffer_bucket(BUCKET_NAME="taiyo-projects"):
 
 def push_json_to_buffer_bucket(bucket: S3Bucket, json_obj: dict, rel_path: str):
     try:
-        buffer = BytesIO(json.dumps(json_obj))
+        buffer = BytesIO(
+            bytes(
+                json.dumps(json_obj),
+                encoding="utf-8",
+            ),
+        )
         bucket.upload_file(fileobj=buffer, key=rel_path)
         print(f'Successfully pushed the json file to "{rel_path}"')
     except Exception as e:

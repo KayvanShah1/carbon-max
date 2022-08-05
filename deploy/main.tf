@@ -15,16 +15,29 @@ resource "google_storage_bucket" "cloud_functions_bucket" {
 }
 
 # Add source code zip to the Cloud Function's bucket
-resource "google_storage_bucket_object" "zip" {
-  source       = data.archive_file.source.output_path
+resource "google_storage_bucket_object" "gcf_dump-into-bucket_zip" {
+  source       = data.archive_file.gcf_dump-into-bucket.output_path
   content_type = "application/zip"
 
-  name   = "src-${data.archive_file.source.output_md5}.zip"
+  name   = "src-${data.archive_file.gcf_dump-into-bucket.output_md5}.zip"
   bucket = google_storage_bucket.cloud_functions_bucket.name
 
   depends_on = [
     google_storage_bucket.cloud_functions_bucket,
-    data.archive_file.source
+    data.archive_file.gcf_dump-into-bucket
+  ]
+}
+
+resource "google_storage_bucket_object" "gcf_publish-message-to-sns_zip" {
+  source       = data.archive_file.gcf_publish-message-to-sns.output_path
+  content_type = "application/zip"
+
+  name   = "src-${data.archive_file.gcf_publish-message-to-sns.output_md5}.zip"
+  bucket = google_storage_bucket.cloud_functions_bucket.name
+
+  depends_on = [
+    google_storage_bucket.cloud_functions_bucket,
+    data.archive_file.gcf_publish-message-to-sns
   ]
 }
 
@@ -45,7 +58,7 @@ resource "google_pubsub_subscription" "test_subscription" {
   name  = "test-subscription"
   topic = google_pubsub_topic.test_topic.name
 
-  ack_deadline_seconds    = 20
+  ack_deadline_seconds    = 120
   enable_message_ordering = false
 
   labels = {
@@ -53,10 +66,10 @@ resource "google_pubsub_subscription" "test_subscription" {
   }
 }
 
-# Create a Gen1 Cloud Function
-resource "google_cloudfunctions_function" "test_function" {
-  name        = "test-function"
-  description = "Pulls the messages from Google Pub/Sub subscription"
+# Create a Gen1 Cloud Functions
+resource "google_cloudfunctions_function" "dump_messages_into_bucket" {
+  name        = "dump-into-bucket"
+  description = "Pulls the messages from Google Pub/Sub subscription and dumps them into GCS"
   region      = var.gcp_region
 
   labels = {
@@ -67,7 +80,7 @@ resource "google_cloudfunctions_function" "test_function" {
   entry_point = "test_function" # Set the entry point 
 
   source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
-  source_archive_object = google_storage_bucket_object.zip.name
+  source_archive_object = google_storage_bucket_object.gcf_dump-into-bucket_zip.name
 
   event_trigger {
     event_type = "google.pubsub.topic.publish"
@@ -78,9 +91,8 @@ resource "google_cloudfunctions_function" "test_function" {
   }
 }
 
-# Create a Gen1 Cloud Function
-resource "google_cloudfunctions_function" "pubsub2sns" {
-  name        = "test-function-pubsub-to-sns"
+resource "google_cloudfunctions_function" "pubsub_2_sns" {
+  name        = "publish-message-to-sns"
   description = "Push messages to Google Pub/Sub to AWS SNS"
   region      = var.gcp_region
 
@@ -92,7 +104,7 @@ resource "google_cloudfunctions_function" "pubsub2sns" {
   entry_point = "pubsub_to_sns" # Set the entry point 
 
   source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
-  source_archive_object = google_storage_bucket_object.zip.name
+  source_archive_object = google_storage_bucket_object.gcf_publish-message-to-sns_zip.name
 
   event_trigger {
     event_type = "google.pubsub.topic.publish"
@@ -148,10 +160,8 @@ resource "aws_s3_bucket" "test_bucket_lambda_functions" {
 # Storing lambda functions source code zip files in a S3 bucket
 resource "aws_s3_object" "test_object_zip" {
   bucket = aws_s3_bucket.test_bucket_lambda_functions.bucket
-  key    = "src-${var.gcp_project_id}-tf-test-lambda-function.zip"
-  source = data.archive_file.lambda_function_source.output_path
-
-  # etag = filemd5(data.archive_file.lambda_function_source.output_path)
+  key    = "tf-test-lambda-function-${data.archive_file.lf_ingest-in-bucket.output_md5}.zip"
+  source = data.archive_file.lf_ingest-in-bucket.output_path
 }
 
 # Create SNS Topic
@@ -254,7 +264,7 @@ resource "aws_iam_policy" "lambda_sqs_policy" {
       "Statement" : [
         {
           "Action" : [
-            "sqs:*", "lambda:*", "sns:*",
+            "sqs:*", "lambda:*", "sns:*", "s3:*",
             "logs:CreateLogGroup",
             "logs:CreateLogStream",
             "logs:PutLogEvents"

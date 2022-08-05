@@ -1,0 +1,40 @@
+[
+    {
+        "messageId": "d4a5581b-1d98-49b4-a5c0-a6db809038c9",
+        "receiptHandle": "AQEBKHnvDI7a6XBTAZeDgwkrXdf8GfsueqeCXhxSYeSjDR+TybiEL4kWhmOVSwTujvveZB9me96tKOCm+jqKBHotpgR9SP5ItNK/OBJYJ6FQT707UroHidewcHyHsBc779jIVJU+9sxtdjNaSpHpRzdlgMKP8tuzhs35Pri6dJrrrpXUagvB1kl23hf6AyDX8aKA5oLN6F0Tknd3yrSotXsW59xclHICpu8eVS9dLnHZYoPniVB4HvlsxAA8Iq61nGODR5P/C1T98Q1XXPVSCoCfWgsjXYKWbDw9Ag64k+VXj4xFRCVwDjK8xgkMJWf5OSpUI1D35EdHPNNVaLS2wdbOmJ72TXJE83TsTyZtO2zo7YPRxarVyuehknemxwHyoDZSdgelB4Iq2+UjrfG5xTWy0g==",
+        "body": {
+            "Type": "Notification",
+            "MessageId": "393e1159-59f8-56a3-8d48-4a3e3e4a68bc",
+            "TopicArn": "arn:aws:sns:us-east-1:236704267456:user-updates-topic",
+            "Message": {
+                "@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
+                "attributes": null,
+                "data": "message4",
+                "messageId": "5276982286263223",
+                "publishTime": "2022-08-05T18:46:04.822Z"
+            },
+            "Timestamp": "2022-08-05T18:46:10.076Z",
+            "SignatureVersion": "1",
+            "Signature": "Gi+vy4113tgc+cMzK8Ic58RiRO80GoEmeU0B7+6z0Oxk8mNilXbzGRgv80eDDmjPOL0Jvzql7QAumotf0X9d5eQVL6HuqhLzkV+8BFWZ2OSgXQ+Usx0KqlVytWcZJBp6usdMCECzZBk5waAAcDLghSKCtI6j1Cz3B6LOnc+7k5E9OcvVgcjiaxSHUuZ6zcaK7VONrCeTvKmvi8Nq34ntF2W5tCeW4sAo9cQs+Ro173dHDt6xaeyahGb4zGuj6nr+3DFH8WDDuVXN3C1iIXcylG5FH4juYMWV0gXB8F3CgNgjjGA/FQ7c9fXhIheq9aCaQ+QldS+G5sQ3ivC1j0qj2A==",
+            "SigningCertURL": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-56e67fcb41f6fec09b0196692625d385.pem",
+            "UnsubscribeURL": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:236704267456:user-updates-topic:f5dfea12-180e-45cc-949c-d1a009281419",
+            "MessageAttributes": {
+                "origin": {
+                    "Type": "String",
+                    "Value": "pubsub"
+                }
+            }
+        },
+        "attributes": {
+            "ApproximateReceiveCount": "1",
+            "SentTimestamp": "1659725170109",
+            "SenderId": "AIDAIT2UOQQY3AUEKVGXU",
+            "ApproximateFirstReceiveTimestamp": "1659725170126"
+        },
+        "messageAttributes": {},
+        "md5OfBody": "6967d591d3c70a46beca54397a54601e",
+        "eventSource": "aws:sqs",
+        "eventSourceARN": "arn:aws:sqs:us-east-1:236704267456:user-updates-queue",
+        "awsRegion": "us-east-1"
+    }
+]

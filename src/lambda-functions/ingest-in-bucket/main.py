@@ -15,7 +15,10 @@ def generate_path(date):
 def lambda_handler(event, context):
     bucket = connect_to_buffer_bucket("optical-unison-356814-tf-test-bucket")
     path = generate_path(datetime.now())
-    for record in event["Records"]:
-        record["body"] = json.loads(record["body"])
 
-    push_json_to_buffer_bucket(bucket, path)
+    messages = event["Records"]
+    for record in messages:
+        record["body"] = json.loads(record["body"])
+        record["body"]["Message"] = json.loads(record["body"]["Message"])
+
+    push_json_to_buffer_bucket(bucket, event["Records"], path)
