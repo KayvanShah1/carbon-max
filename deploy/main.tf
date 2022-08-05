@@ -177,24 +177,39 @@ resource "aws_sns_topic" "user_updates" {
 }
 
 # Create SQS Queue for messages
+resource "aws_sqs_queue" "terraform_queue_deadletter" {
+  name = "terraform-queue-deadletter"
+}
+
 resource "aws_sqs_queue" "user_updates_queue" {
-  name                      = "user-updates-queue"
-  delay_seconds             = 90
-  max_message_size          = 2048
-  message_retention_seconds = 86400
-  receive_wait_time_seconds = 10
-  # redrive_policy = jsonencode({
-  #   deadLetterTargetArn = aws_sqs_queue.terraform_queue_deadletter.arn
-  #   maxReceiveCount     = 4
-  # })
+  name                       = "user-updates-queue"
+  message_retention_seconds  = 86400
+  visibility_timeout_seconds = 10
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.terraform_queue_deadletter.arn
+    maxReceiveCount     = 4
+  })
+}
+
+resource "aws_sqs_queue_policy" "user_updates_queue_policy" {
+  queue_url = aws_sqs_queue.user_updates_queue.id
+
   policy = jsonencode({
     "Version" : "2012-10-17",
     "Id" : "sqspolicy",
     "Statement" : [
       {
+        "Sid" : "First",
         "Effect" : "Allow",
         "Principal" : "*",
-        "Action" : ["sqs:*", "lambda:*"],
+        "Action" : "sqs:*",
+        "Resource" : "${aws_sqs_queue.user_updates_queue.arn}",
+        "Condition" : {
+          "ArnEquals" : {
+            "aws:SourceArn" : "${aws_sns_topic.user_updates.arn}"
+          }
+        }
       }
     ]
   })
@@ -239,7 +254,10 @@ resource "aws_iam_policy" "lambda_sqs_policy" {
       "Statement" : [
         {
           "Action" : [
-            "sqs:*", "lambda:*"
+            "sqs:*", "lambda:*", "sns:*",
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
           ],
           "Resource" : "*",
           "Effect" : "Allow"

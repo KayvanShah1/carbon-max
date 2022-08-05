@@ -3,16 +3,9 @@ import functions_framework
 from datetime import datetime
 
 import boto3
-from google.cloud import secretmanager
 
 from bucket import push_json_to_buffer_bucket, connect_to_buffer_bucket
-
-
-def get_secret(client, project_id, secret_id):
-    secret_detail = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(request={"name": secret_detail})
-    payload = response.payload.data.decode("UTF-8")
-    return payload
+import secrets
 
 
 def generate_path(date):
@@ -50,18 +43,13 @@ def pubsub_to_sns(cloud_event):
     message = get_message_from_subscription(cloud_event)
 
     # Authenticate AWS Service User Client
-    client = secretmanager.SecretManagerServiceClient()
-    gcp_project_id = "optical-unison-356814"
-    aws_access_key_id = get_secret(client, gcp_project_id, "aws_access_key_id")
-    aws_secret_access_key = get_secret(client, gcp_project_id, "aws_secret_access_key")
-
     sns = boto3.client(
         "sns",
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
+        aws_access_key_id=secrets.aws_access_key_id,
+        aws_secret_access_key=secrets.aws_secret_access_key,
     )
     region = "us-east-2"
-    account = "236704267456"
+    account = secrets.aws_account_number
     topic_name = "user-updates-topic"
     attrs = {"origin": {"DataType": "String", "StringValue": "pubsub"}}
     topic = f"arn:aws:sns:{region}:{account}:{topic_name}"
