@@ -15,30 +15,40 @@ resource "google_storage_bucket" "cloud_functions_bucket" {
 }
 
 # Add source code zip to the Cloud Function's bucket
-resource "google_storage_bucket_object" "gcf_dump-into-bucket_zip" {
-  source       = data.archive_file.gcf_dump-into-bucket.output_path
+# resource "google_storage_bucket_object" "gcf_dump-into-bucket_zip" {
+#   source       = data.archive_file.gcf_dump-into-bucket.output_path
+#   content_type = "application/zip"
+
+#   name   = "src-${data.archive_file.gcf_dump-into-bucket.output_md5}.zip"
+#   bucket = google_storage_bucket.cloud_functions_bucket.name
+
+#   depends_on = [
+#     google_storage_bucket.cloud_functions_bucket,
+#     data.archive_file.gcf_dump-into-bucket
+#   ]
+# }
+
+# resource "google_storage_bucket_object" "gcf_publish-message-to-sns_zip" {
+#   source       = data.archive_file.gcf_publish-message-to-sns.output_path
+#   content_type = "application/zip"
+
+#   name   = "src-${data.archive_file.gcf_publish-message-to-sns.output_md5}.zip"
+#   bucket = google_storage_bucket.cloud_functions_bucket.name
+
+#   depends_on = [
+#     google_storage_bucket.cloud_functions_bucket,
+#     data.archive_file.gcf_publish-message-to-sns
+#   ]
+# }
+
+resource "google_storage_bucket_object" "gcloud_function_zip" {
+  for_each = local.gcloud_functions
+
+  source       = data.archive_file.gcloud_func_archive[each.key].output_path
   content_type = "application/zip"
 
-  name   = "src-${data.archive_file.gcf_dump-into-bucket.output_md5}.zip"
+  name   = "src-${data.archive_file.gcloud_func_archive[each.key].output_md5}.zip"
   bucket = google_storage_bucket.cloud_functions_bucket.name
-
-  depends_on = [
-    google_storage_bucket.cloud_functions_bucket,
-    data.archive_file.gcf_dump-into-bucket
-  ]
-}
-
-resource "google_storage_bucket_object" "gcf_publish-message-to-sns_zip" {
-  source       = data.archive_file.gcf_publish-message-to-sns.output_path
-  content_type = "application/zip"
-
-  name   = "src-${data.archive_file.gcf_publish-message-to-sns.output_md5}.zip"
-  bucket = google_storage_bucket.cloud_functions_bucket.name
-
-  depends_on = [
-    google_storage_bucket.cloud_functions_bucket,
-    data.archive_file.gcf_publish-message-to-sns
-  ]
 }
 
 # Create a Pub/Sub Topic
@@ -67,32 +77,58 @@ resource "google_pubsub_subscription" "test_subscription" {
 }
 
 # Create a Gen1 Cloud Functions
-resource "google_cloudfunctions_function" "dump_messages_into_bucket" {
-  name        = "dump-into-bucket"
-  description = "Pulls the messages from Google Pub/Sub subscription and dumps them into GCS"
-  region      = var.gcp_region
+# resource "google_cloudfunctions_function" "dump_messages_into_bucket" {
+#   name        = "dump-into-bucket"
+#   description = "Pulls the messages from Google Pub/Sub subscription and dumps them into GCS"
+#   region      = var.gcp_region
 
-  labels = {
-    my-label = "testing"
-  }
+#   labels = {
+#     my-label = "testing"
+#   }
 
-  runtime     = "python39"
-  entry_point = "test_function" # Set the entry point 
+#   runtime     = "python39"
+#   entry_point = "function_handler" # Set the entry point 
 
-  source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
-  source_archive_object = google_storage_bucket_object.gcf_dump-into-bucket_zip.name
+#   source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
+#   source_archive_object = google_storage_bucket_object.gcf_dump-into-bucket_zip.name
 
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.test_topic.name
-    failure_policy {
-      retry = true
-    }
-  }
-}
+#   event_trigger {
+#     event_type = "google.pubsub.topic.publish"
+#     resource   = google_pubsub_topic.test_topic.name
+#     failure_policy {
+#       retry = true
+#     }
+#   }
+# }
 
-resource "google_cloudfunctions_function" "pubsub_2_sns" {
-  name        = "publish-message-to-sns"
+# resource "google_cloudfunctions_function" "pubsub_2_sns" {
+#   name        = "publish-message-to-sns"
+#   description = "Push messages to Google Pub/Sub to AWS SNS"
+#   region      = var.gcp_region
+
+#   labels = {
+#     my-label = "testing"
+#   }
+
+#   runtime     = "python39"
+#   entry_point = "function_handler" # Set the entry point 
+
+#   source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
+#   source_archive_object = google_storage_bucket_object.gcf_publish-message-to-sns_zip.name
+
+#   event_trigger {
+#     event_type = "google.pubsub.topic.publish"
+#     resource   = google_pubsub_topic.test_topic.name
+#     failure_policy {
+#       retry = true
+#     }
+#   }
+# }
+
+resource "google_cloudfunctions_function" "gcloud_functions" {
+  for_each = local.gcloud_functions
+
+  name        = each.key
   description = "Push messages to Google Pub/Sub to AWS SNS"
   region      = var.gcp_region
 
@@ -101,10 +137,10 @@ resource "google_cloudfunctions_function" "pubsub_2_sns" {
   }
 
   runtime     = "python39"
-  entry_point = "pubsub_to_sns" # Set the entry point 
+  entry_point = "function_handler" # Set the entry point 
 
   source_archive_bucket = google_storage_bucket.cloud_functions_bucket.name
-  source_archive_object = google_storage_bucket_object.gcf_publish-message-to-sns_zip.name
+  source_archive_object = google_storage_bucket_object.gcloud_function_zip[each.key].name
 
   event_trigger {
     event_type = "google.pubsub.topic.publish"
@@ -149,19 +185,22 @@ resource "google_cloudfunctions_function" "pubsub_2_sns" {
 
 # Create a S3 Bucket to store the messages
 resource "aws_s3_bucket" "test_bucket" {
-  bucket = "${var.gcp_project_id}-tf-test-bucket"
+  bucket        = "${var.gcp_project_id}-tf-test-bucket"
+  force_destroy = true
 }
 
 # Create a S3 Bucket to store the lambda functions source code zip files
 resource "aws_s3_bucket" "test_bucket_lambda_functions" {
-  bucket = "${var.gcp_project_id}-tf-test-bucket-lambda-functions"
+  bucket        = "${var.gcp_project_id}-tf-test-bucket-lambda-functions"
+  force_destroy = true
 }
 
 # Storing lambda functions source code zip files in a S3 bucket
-resource "aws_s3_object" "test_object_zip" {
-  bucket = aws_s3_bucket.test_bucket_lambda_functions.bucket
-  key    = "tf-test-lambda-function-${data.archive_file.lf_ingest-in-bucket.output_md5}.zip"
-  source = data.archive_file.lf_ingest-in-bucket.output_path
+resource "aws_s3_object" "lambda_functions_zip" {
+  for_each = local.lambda_functions
+  bucket   = aws_s3_bucket.test_bucket_lambda_functions.bucket
+  key      = "src-${data.archive_file.lambda_func_archive[each.key].output_md5}.zip"
+  source   = data.archive_file.lambda_func_archive[each.key].output_path
 }
 
 # Create SNS Topic
@@ -264,7 +303,7 @@ resource "aws_iam_policy" "lambda_sqs_policy" {
       "Statement" : [
         {
           "Action" : [
-            "sqs:*", "lambda:*", "sns:*", "s3:*",
+            "sqs:*", "s3:*",
             "logs:CreateLogGroup",
             "logs:CreateLogStream",
             "logs:PutLogEvents"
@@ -284,18 +323,23 @@ resource "aws_iam_role_policy_attachment" "lambda_logs" {
 
 # Create a lambda function from the source archive object from S3 bucket
 resource "aws_lambda_function" "test_lambda" {
-  function_name = "${var.gcp_project_id}-tf-lambda-function-test"
+  for_each = local.lambda_functions
+
+  function_name = each.key
   role          = aws_iam_role.iam_for_lambda.arn
   handler       = "main.lambda_handler"
 
-  s3_bucket = aws_s3_bucket.test_bucket_lambda_functions.bucket
-  s3_key    = aws_s3_object.test_object_zip.key
+  s3_bucket        = aws_s3_bucket.test_bucket_lambda_functions.bucket
+  s3_key           = aws_s3_object.lambda_functions_zip[each.key].key
+  source_code_hash = data.archive_file.lambda_func_archive[each.key].output_base64sha256
 
   runtime = "python3.9"
 }
 
 # Add event source mapping to
 resource "aws_lambda_event_source_mapping" "example" {
+  for_each = local.lambda_functions
+
   event_source_arn = aws_sqs_queue.user_updates_queue.arn
-  function_name    = aws_lambda_function.test_lambda.arn
+  function_name    = aws_lambda_function.test_lambda[each.key].arn
 }

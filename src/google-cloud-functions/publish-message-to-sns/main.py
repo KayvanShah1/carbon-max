@@ -24,7 +24,7 @@ def get_message_from_subscription(cloud_event):
 
 
 @functions_framework.cloud_event
-def pubsub_to_sns(cloud_event):
+def function_handler(cloud_event):
     message = get_message_from_subscription(cloud_event)
 
     print("Connecting to GCP Secret Manager Service Client ...")

@@ -48,7 +48,7 @@ def get_key(num_keys):
     return f"key{number}"
 
 
-for num_messages in range(10):
+for num_messages in range(20):
     # Data must be a bytestring
     message["glossary"]["id"] = str(uuid.uuid4())
     message["glossary"]["publish_datetime"] = str(datetime.now())

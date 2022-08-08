@@ -32,7 +32,7 @@ def get_message_from_subscription(cloud_event):
 
 @functions_framework.cloud_event
 # Triggered from a message on a Cloud Pub/Sub topic.
-def test_function(cloud_event):
+def function_handler(cloud_event):
     # Connect to the buffer bucket
     # Create a path where the message is to be pushed
     bucket = connect_to_buffer_bucket("optical-unison-356814-test-bucket")
