@@ -6,6 +6,23 @@ from google.cloud import secretmanager
 
 
 def get_secret(client, project_id, secret_id):
+    """
+    Retrieves the latest version of a secret from Secret Manager.
+
+    Args:
+        client (SecretManagerServiceClient): The Secret Manager client.
+        project_id (str): The ID of the project containing the secret.
+        secret_id (str): The ID of the secret.
+
+    Returns:
+        str: The payload of the latest version of the secret.
+
+    Raises:
+        google.api_core.exceptions.NotFound: If the secret or its latest version is not found.
+        google.api_core.exceptions.PermissionDenied: If the user does not have permission to access the secret.
+        google.api_core.exceptions.InvalidArgument: If the project ID or secret ID is invalid.
+        google.api_core.exceptions.GoogleAPICallError: If the request to access the secret fails.
+    """
     secret_detail = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
     response = client.access_secret_version(request={"name": secret_detail})
     payload = response.payload.data.decode("UTF-8")
@@ -13,8 +30,18 @@ def get_secret(client, project_id, secret_id):
 
 
 def get_message_from_subscription(cloud_event):
+    """
+    Retrieves and decodes a message from a Pub/Sub subscription.
+
+    Args:
+        cloud_event (dict): The cloud event containing the message.
+
+    Returns:
+        dict: The decoded message.
+
+    """
     # Pull the message from the subscription
-    # Decode the binary message to make to JSON compatible
+    # Decode the binary message to make it JSON compatible
     message = cloud_event.data["message"]
     message["data"] = base64.b64decode(message["data"]).decode("utf-8")
     print("Successfully received message from Pub/Sub subscription")
